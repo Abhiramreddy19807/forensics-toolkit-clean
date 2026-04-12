@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-gauge-high"></i> Threat Intelligence Dashboard</h1>
+    <p class="page-subtitle">Real-time security monitoring & forensic analytics overview</p>
+  </div>
+  <a href="{{ url_for('download_report') }}" class="btn btn-primary">
+    <i class="fas fa-file-pdf"></i> Export PDF Report
+  </a>
+</div>
+
+<!-- Analytics Cards -->
+<div class="cards-grid" id="cardsGrid">
+  <div class="stat-card" data-delay="0">
+    <div class="stat-card-inner">
+      <div class="stat-icon teal"><i class="fas fa-radar"></i></div>
+      <div class="stat-body">
+        <p class="stat-label">Total Scans</p>
+        <h2 class="stat-value" id="statScans">{{ analytics.total_scans }}</h2>
+        <p class="stat-change up"><i class="fas fa-arrow-trend-up"></i> Active monitoring</p>
+      </div>
+    </div>
+    <div class="card-bar teal-bar"></div>
+  </div>
+
+  <div class="stat-card" data-delay="100">
+    <div class="stat-card-inner">
+      <div class="stat-icon red"><i class="fas fa-skull-crossbones"></i></div>
+      <div class="stat-body">
+        <p class="stat-label">Intrusions Detected</p>
+        <h2 class="stat-value danger-val" id="statIntrusions">{{ analytics.intrusions_detected }}</h2>
+        <p class="stat-change {% if analytics.intrusions_detected > 0 %}danger{% else %}up{% endif %}">
+          {% if analytics.intrusions_detected > 0 %}
+            <i class="fas fa-triangle-exclamation"></i> Requires action
+          {% else %}
+            <i class="fas fa-check-circle"></i> All clear
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    <div class="card-bar red-bar"></div>
+  </div>
+
+  <div class="stat-card" data-delay="200">
+    <div class="stat-card-inner">
+      <div class="stat-icon amber"><i class="fas fa-bug"></i></div>
+      <div class="stat-body">
+        <p class="stat-label">Anomalies Found</p>
+        <h2 class="stat-value amber-val" id="statAnomalies">{{ analytics.anomalies_found }}</h2>
+        <p class="stat-change up"><i class="fas fa-chart-line"></i> Isolation Forest ML</p>
+      </div>
+    </div>
+    <div class="card-bar amber-bar"></div>
+  </div>
+
+  <div class="stat-card" data-delay="300">
+    <div class="stat-card-inner">
+      <div class="stat-icon blue"><i class="fas fa-image"></i></div>
+      <div class="stat-body">
+        <p class="stat-label">Images Analyzed</p>
+        <h2 class="stat-value" id="statImages">{{ analytics.images_analyzed }}</h2>
+        <p class="stat-change up"><i class="fas fa-eye"></i> ELA + Edge Detection</p>
+      </div>
+    </div>
+    <div class="card-bar blue-bar"></div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-row">
+  <div class="chart-card wide">
+    <div class="chart-card-header">
+      <h3><i class="fas fa-chart-area"></i> Threat Activity Timeline</h3>
+      <div class="chart-legend">
+        <span class="legend-dot red-dot"></span><span>Intrusions</span>
+        <span class="legend-dot amber-dot"></span><span>Anomalies</span>
+      </div>
+    </div>
+    <canvas id="activityChart" height="80"></canvas>
+  </div>
+
+  <div class="chart-card narrow">
+    <div class="chart-card-header">
+      <h3><i class="fas fa-chart-pie"></i> Scan Distribution</h3>
+    </div>
+    <canvas id="pieChart" height="160"></canvas>
+  </div>
+</div>
+
+<!-- Quick Actions + Alert Feed -->
+<div class="bottom-row">
+  <div class="quick-actions-card">
+    <h3 class="section-title"><i class="fas fa-bolt"></i> Quick Actions</h3>
+    <div class="action-buttons">
+      <a href="{{ url_for('evidence') }}" class="action-btn">
+        <i class="fas fa-magnifying-glass-chart"></i>
+        <span>Analyze Evidence</span>
+      </a>
+      <a href="{{ url_for('intrusion') }}" class="action-btn">
+        <i class="fas fa-tower-broadcast"></i>
+        <span>Check Intrusion</span>
+      </a>
+      <a href="{{ url_for('image_analysis') }}" class="action-btn">
+        <i class="fas fa-image"></i>
+        <span>Scan Image</span>
+      </a>
+      <a href="{{ url_for('download_report') }}" class="action-btn">
+        <i class="fas fa-file-arrow-down"></i>
+        <span>Export Report</span>
+      </a>
+    </div>
+
+    <div class="system-status">
+      <h4><i class="fas fa-server"></i> System Status</h4>
+      <div class="status-rows">
+        <div class="status-row"><span>ML Engine</span><span class="badge green">ONLINE</span></div>
+        <div class="status-row"><span>Image Analyzer</span><span class="badge green">ONLINE</span></div>
+        <div class="status-row"><span>Rule Engine</span><span class="badge green">ONLINE</span></div>
+        <div class="status-row"><span>Report Gen</span><span class="badge green">ONLINE</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-feed-card">
+    <h3 class="section-title"><i class="fas fa-bell"></i> Live Alert Feed</h3>
+    <div class="alert-feed" id="dashAlertFeed">
+      {% if analytics.alerts %}
+        {% for alert in analytics.alerts[:8] %}
+        <div class="alert-item {{ alert.type }}">
+          <span class="alert-time">{{ alert.time }}</span>
+          <span class="alert-msg">{{ alert.msg }}</span>
+          <span class="alert-type-badge {{ alert.type }}">{{ alert.type.upper() }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="no-alerts-msg">
+          <i class="fas fa-shield-check"></i>
+          <p>No alerts detected. System is secure.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

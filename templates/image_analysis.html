@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Image Forgery Detection{% endblock %}
+{% block breadcrumb %}Image Forgery Detection{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-image"></i> Image Forgery Detection</h1>
+    <p class="page-subtitle">ELA + edge inconsistency + noise variance analysis to detect tampered images</p>
+  </div>
+</div>
+
+<!-- Upload Zone -->
+<div class="tool-panel">
+  <div class="panel-header">
+    <h3><i class="fas fa-upload"></i> Image Upload</h3>
+    <span class="panel-badge">ELA · OpenCV · Edge Detection</span>
+  </div>
+  <div class="panel-body">
+    <div class="img-upload-zone" id="imgUploadZone">
+      <div id="imgDropArea">
+        <i class="fas fa-image upload-icon" style="font-size:3rem;color:var(--accent-teal)"></i>
+        <p>Drag & drop image here, or click to select</p>
+        <small>Supported: JPG, PNG, BMP, TIFF · Max 16 MB</small>
+        <input type="file" id="imageFile" accept="image/*" style="display:none" onchange="previewImage(event)"/>
+        <button class="btn btn-outline" onclick="document.getElementById('imageFile').click()">
+          <i class="fas fa-folder-open"></i> Browse
+        </button>
+      </div>
+      <!-- Preview -->
+      <div id="imgPreviewArea" style="display:none">
+        <img id="imgPreview" class="img-preview-thumb" alt="Preview"/>
+        <div class="img-meta" id="imgMeta"></div>
+        <button class="btn-clear" onclick="clearImage()"><i class="fas fa-xmark"></i> Remove</button>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" id="analyzeImgBtn" onclick="analyzeImage()" disabled>
+        <i class="fas fa-microscope"></i> Analyze Image
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-banner" id="imgLoading" style="display:none">
+  <div class="spinner"></div>
+  <span>Running multi-signal forgery analysis…</span>
+</div>
+
+<!-- Results -->
+<div id="imgResultsSection" style="display:none">
+  <!-- Verdict Banner -->
+  <div class="verdict-banner" id="imgVerdictBanner">
+    <div class="verdict-icon-lg" id="verdictIcon"></div>
+    <div class="verdict-details">
+      <h2 id="verdictText"></h2>
+      <p id="verdictSub"></p>
+    </div>
+    <div class="tampering-gauge">
+      <svg viewBox="0 0 200 120" class="gauge-svg">
+        <defs>
+          <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#10b981"/>
+            <stop offset="50%" stop-color="#f59e0b"/>
+            <stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+        </defs>
+        <!-- Track -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+        <!-- Fill -->
+        <path id="gaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 251.2"/>
+        <!-- Needle placeholder replaced by score text -->
+      </svg>
+      <div class="gauge-score" id="gaugeScore">0%</div>
+      <div class="gauge-label">Tampering Score</div>
+    </div>
+  </div>
+
+  <!-- Metrics Grid -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-icon"><i class="fas fa-wave-square"></i></div>
+      <div>
+        <p class="metric-label">ELA Score</p>
+        <p class="metric-value" id="metELA">—</p>
+        <p class="metric-hint">Error Level Analysis</p>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon"><i class="fas fa-border-all"></i></div>
+      <div>
+        <p class="metric-label">Edge Density</p>
+        <p class="metric-value" id="metEdge">—</p>
+        <p class="metric-hint">Canny edge inconsistency %</p>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon"><i class="fas fa-chart-scatter"></i></div>
+      <div>
+        <p class="metric-label">Noise Variance</p>
+        <p class="metric-value" id="metNoise">—</p>
+        <p class="metric-hint">Laplacian noise analysis</p>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon"><i class="fas fa-infinity"></i></div>
+      <div>
+        <p class="metric-label">Entropy</p>
+        <p class="metric-value" id="metEntropy">—</p>
+        <p class="metric-hint">Histogram information density</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-side images -->
+  <div class="img-comparison">
+    <div class="img-panel">
+      <div class="img-panel-header"><i class="fas fa-image"></i> Original</div>
+      <img id="originalImg" alt="Original" class="analysis-img"/>
+    </div>
+    <div class="img-panel">
+      <div class="img-panel-header"><i class="fas fa-wave-square"></i> ELA Visualization</div>
+      <img id="elaImg" alt="ELA" class="analysis-img"/>
+      <p class="img-caption">Bright areas indicate potential forgery regions</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/image_analysis.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Evidence Analyzer{% endblock %}
+{% block breadcrumb %}Evidence Analyzer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-magnifying-glass-chart"></i> Evidence Analyzer</h1>
+    <p class="page-subtitle">Upload network logs or use synthetic demo data — Isolation Forest ML detects anomalies</p>
+  </div>
+</div>
+
+<!-- Upload Panel -->
+<div class="tool-panel">
+  <div class="panel-header">
+    <h3><i class="fas fa-upload"></i> Data Input</h3>
+    <span class="panel-badge">Isolation Forest · Unsupervised ML</span>
+  </div>
+  <div class="panel-body">
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+      <p>Drag & drop a CSV file here, or click to browse</p>
+      <small>Numeric columns will be used as features (max 6). Leave empty for demo data.</small>
+      <input type="file" id="evidenceFile" accept=".csv" style="display:none"/>
+      <button class="btn btn-outline" onclick="document.getElementById('evidenceFile').click()">
+        <i class="fas fa-folder-open"></i> Browse Files
+      </button>
+    </div>
+    <div class="file-selected" id="fileSelected" style="display:none">
+      <i class="fas fa-file-csv"></i>
+      <span id="selectedFileName">No file selected</span>
+      <button class="btn-clear" onclick="clearFile()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()">
+        <i class="fas fa-play"></i> Run Analysis
+      </button>
+      <button class="btn btn-outline" onclick="clearResults()">
+        <i class="fas fa-rotate-left"></i> Reset
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-banner" id="evidenceLoading" style="display:none">
+  <div class="spinner"></div>
+  <span>Running Isolation Forest anomaly detection…</span>
+</div>
+
+<!-- Results Section -->
+<div id="resultsSection" style="display:none">
+  <!-- Summary Cards -->
+  <div class="result-summary" id="resultSummary">
+    <div class="summary-item">
+      <span class="summary-label">Total Records</span>
+      <span class="summary-value" id="totalRecords">—</span>
+    </div>
+    <div class="summary-item danger-item">
+      <span class="summary-label">Anomalies</span>
+      <span class="summary-value danger-val" id="anomalyCount">—</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Normal</span>
+      <span class="summary-value" id="normalCount">—</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Detection Rate</span>
+      <span class="summary-value amber-val" id="detectionRate">—</span>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-card" style="margin-bottom:1.5rem;">
+    <div class="chart-card-header">
+      <h3><i class="fas fa-chart-scatter"></i> Anomaly Score Distribution</h3>
+      <span class="chart-note">Lower score = more anomalous</span>
+    </div>
+    <canvas id="anomalyChart" height="70"></canvas>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h3><i class="fas fa-table"></i> Analysis Results</h3>
+      <div class="table-controls">
+        <input class="search-input" type="text" id="tableSearch" placeholder="Filter records…" oninput="filterTable()"/>
+        <select class="filter-select" id="statusFilter" onchange="filterTable()">
+          <option value="">All Status</option>
+          <option value="ANOMALY">Anomaly Only</option>
+          <option value="NORMAL">Normal Only</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="evidenceTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-footer" id="tableFooter"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/evidence.js') }}"></script>
+{% endblock %}

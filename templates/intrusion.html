@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Intrusion Detection{% endblock %}
+{% block breadcrumb %}Intrusion Detection{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-tower-broadcast"></i> Intrusion Detection System</h1>
+    <p class="page-subtitle">Enter network traffic parameters — Random Forest + rule-based engine classifies threats</p>
+  </div>
+</div>
+
+<div class="two-col-layout">
+  <!-- Input Panel -->
+  <div class="input-panel">
+    <div class="tool-panel">
+      <div class="panel-header">
+        <h3><i class="fas fa-sliders"></i> Traffic Parameters</h3>
+        <span class="panel-badge">Random Forest · Rule Engine</span>
+      </div>
+      <div class="panel-body">
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label><i class="fas fa-arrow-right-from-bracket"></i> Source Port</label>
+            <input type="number" id="srcPort" value="52341" min="0" max="65535"/>
+            <span class="form-hint">0 – 65535</span>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-arrow-right-to-bracket"></i> Destination Port</label>
+            <input type="number" id="dstPort" value="443" min="0" max="65535"/>
+            <span class="form-hint">0 – 65535</span>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-box"></i> Packet Size (bytes)</label>
+            <input type="number" id="packetSize" value="512" min="0"/>
+            <span class="form-hint">Typical: 64 – 1500</span>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-clock"></i> Duration (sec)</label>
+            <input type="number" id="duration" value="1.2" step="0.1" min="0"/>
+            <span class="form-hint">Session duration</span>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-database"></i> Byte Count</label>
+            <input type="number" id="byteCount" value="1024" min="0"/>
+            <span class="form-hint">Total bytes transferred</span>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-network-wired"></i> Connection Count</label>
+            <input type="number" id="connCount" value="5" min="0"/>
+            <span class="form-hint">Simultaneous connections</span>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-code-branch"></i> Protocol</label>
+            <select id="protocol">
+              <option value="1">TCP</option>
+              <option value="0">UDP</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-flag"></i> TCP Flags</label>
+            <input type="number" id="flags" value="2" min="0" max="63"/>
+            <span class="form-hint">0=None 2=SYN 18=SYN-ACK 4=RST</span>
+          </div>
+        </div>
+
+        <!-- Quick Load Presets -->
+        <div class="presets">
+          <span class="preset-label">Load preset:</span>
+          <button class="preset-btn" onclick="loadPreset('normal')">Normal Traffic</button>
+          <button class="preset-btn red" onclick="loadPreset('portscan')">Port Scan</button>
+          <button class="preset-btn red" onclick="loadPreset('dos')">DoS Attack</button>
+          <button class="preset-btn red" onclick="loadPreset('ssh')">SSH Brute</button>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-primary" onclick="detectIntrusion()">
+            <i class="fas fa-shield-virus"></i> Analyze Traffic
+          </button>
+          <button class="btn btn-outline" onclick="randomizeInputs()">
+            <i class="fas fa-shuffle"></i> Randomize
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="results-panel">
+    <!-- Verdict Card -->
+    <div class="verdict-card" id="verdictCard">
+      <div class="verdict-placeholder">
+        <i class="fas fa-magnifying-glass"></i>
+        <p>Submit traffic parameters to see the verdict</p>
+      </div>
+    </div>
+
+    <!-- History Chart -->
+    <div class="chart-card" style="margin-top:1.5rem">
+      <div class="chart-card-header">
+        <h3><i class="fas fa-chart-line"></i> Detection History</h3>
+        <span class="chart-note" id="historyCount">0 analyses run</span>
+      </div>
+      <canvas id="intrusionChart" height="100"></canvas>
+    </div>
+
+    <!-- Confidence Meter -->
+    <div class="tool-panel" style="margin-top:1.5rem">
+      <div class="panel-header">
+        <h3><i class="fas fa-gauge"></i> Confidence Meter</h3>
+      </div>
+      <div class="panel-body">
+        <div class="confidence-display" id="confidenceDisplay">
+          <div class="confidence-value" id="confValue">—</div>
+          <div class="confidence-bar-bg">
+            <div class="confidence-bar-fill" id="confBar" style="width:0%"></div>
+          </div>
+          <div class="confidence-labels">
+            <span>0%</span><span>50%</span><span>100%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Analysis Log -->
+<div class="table-card" style="margin-top:1.5rem">
+  <div class="table-header">
+    <h3><i class="fas fa-list-check"></i> Analysis Log</h3>
+    <button class="btn btn-outline btn-sm" onclick="clearLog()"><i class="fas fa-trash"></i> Clear</button>
+  </div>
+  <div class="table-wrapper">
+    <table class="data-table" id="logTable">
+      <thead>
+        <tr>
+          <th>#</th><th>Time</th><th>Src Port</th><th>Dst Port</th>
+          <th>Pkt Size</th><th>Protocol</th><th>Verdict</th><th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody id="logBody">
+        <tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No analyses yet</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/intrusion.js') }}"></script>
+{% endblock %}
