@@ -40,6 +40,11 @@ from reportlab.platypus import (
 )
 from reportlab.lib.units import inch
 
+# ---------------------------------------------------------------------------
+# App Configuration
+# ---------------------------------------------------------------------------
+app = Flask(__name__)
+
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -49,16 +54,13 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB limit
+
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "csv", "txt"}
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# ---------------------------------------------------------------------------
-# App Configuration
-# ---------------------------------------------------------------------------
-app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "forensics-ai-secret-2024-xK9mP")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
