@@ -602,6 +602,8 @@ def login():
                 "time": datetime.now().strftime("%H:%M:%S")
             })
             logger.info(f"User '{username}' (role={user_record['role']}) logged in.")
+            session["user"] = username
+            session["role"] = user_record["role"]
             return redirect(url_for("dashboard"))
         error = "Invalid credentials. Please try again."
         logger.warning(f"Failed login attempt for '{username}'")
