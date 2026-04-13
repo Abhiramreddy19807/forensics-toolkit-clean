@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Cases{% endblock %}
+{% block breadcrumb %}Case Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-folder-open"></i> Case Management</h1>
+    <p class="page-subtitle">Create and manage forensic cases</p>
+  </div>
+</div>
+
+<div class="tool-panel">
+  <div class="panel-header">
+    <h3><i class="fas fa-plus"></i> Create New Case</h3>
+  </div>
+  <div class="panel-body">
+    <form method="POST" action="{{ url_for('create_case') }}">
+      <div class="form-group" style="max-width:400px">
+        <label>Case Name</label>
+        <input type="text" name="case_name" placeholder="Enter case name" required class="full-width">
+      </div>
+      <button type="submit" class="btn btn-primary">Create Case</button>
+    </form>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="table-header">
+    <h3><i class="fas fa-list"></i> Active Cases ({{ cases|length }})</h3>
+  </div>
+  <div class="table-wrapper">
+    {% if cases %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for case in cases %}
+        <tr>
+          <td>{{ case.id }}</td>
+          <td>{{ case.name }}</td>
+          <td><span class="status-badge normal">Open</span></td>
+          <td>{{ case.created|default('Just now') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="text-align:center;padding:2rem;color:var(--text-muted)">No cases yet. Create one above.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

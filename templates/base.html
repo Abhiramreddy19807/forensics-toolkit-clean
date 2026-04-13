@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
   {% block head %}{% endblock %}
 </head>
 <body class="app-body">
@@ -41,28 +41,68 @@
             <span>Evidence Analyzer</span>
           </a>
         </li>
+        {% set role = session.get('role', 'student') %}
+        {% if role in ['police', 'analyst'] %}
         <li>
           <a href="{{ url_for('intrusion') }}" class="nav-link {% if request.endpoint == 'intrusion' %}active{% endif %}">
             <i class="fas fa-tower-broadcast"></i>
             <span>Intrusion Detection</span>
           </a>
         </li>
+        {% endif %}
+
         <li>
           <a href="{{ url_for('image_analysis') }}" class="nav-link {% if request.endpoint == 'image_analysis' %}active{% endif %}">
             <i class="fas fa-image"></i>
             <span>Image Forgery</span>
           </a>
         </li>
+        <li>
+          <a href="/cases" class="nav-link">
+            <i class="fas fa-folder-open"></i>
+            <span>Cases</span>
+          </a>
+        </li>
+        <li>
+          <a href="/logs" class="nav-link">
+            <i class="fas fa-list-check"></i>
+            <span>Logs</span>
+          </a>
+        </li>
+        {% if role in ['police', 'analyst'] %}
+        <li>
+          <a href="{{ url_for('cases') }}" class="nav-link {% if request.endpoint == 'cases' %}active{% endif %}">
+            <i class="fas fa-folder-open"></i>
+            <span>Case Manager</span>
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('log_analysis') }}" class="nav-link {% if request.endpoint == 'log_analysis' %}active{% endif %}">
+            <i class="fas fa-file-lines"></i>
+            <span>Log Analysis</span>
+          </a>
+        </li>
+        {% endif %}
       </ul>
 
       <div class="nav-section-label" style="margin-top:2rem;">TOOLS</div>
       <ul>
+        {% if role in ['police', 'analyst'] %}
         <li>
           <a href="{{ url_for('download_report') }}" class="nav-link">
             <i class="fas fa-file-arrow-down"></i>
             <span>Download Report</span>
           </a>
         </li>
+        {% if role == 'police' %}
+        <li>
+          <a href="/api/export/activity.csv" class="nav-link">
+            <i class="fas fa-scroll"></i>
+            <span>Activity Log</span>
+          </a>
+        </li>
+        {% endif %}
+        {% endif %}
         <li>
           <a href="{{ url_for('logout') }}" class="nav-link nav-link-danger">
             <i class="fas fa-right-from-bracket"></i>
@@ -77,9 +117,20 @@
         <div class="user-avatar">{{ user[0].upper() }}</div>
         <div class="user-info">
           <span class="user-name">{{ user }}</span>
-          <span class="user-role">Forensic Analyst</span>
+          <span class="user-role">{{ session.get('role_label', 'Forensic Analyst') }}</span>
         </div>
         <span class="online-dot"></span>
+      </div>
+      <!-- Role badge -->
+      <div class="role-badge-strip" style="margin-top:0.6rem">
+        {% set role = session.get('role','student') %}
+        {% if role == 'police' %}
+          <span class="role-pill role-police"><i class="fas fa-shield-badge"></i> Law Enforcement</span>
+        {% elif role == 'analyst' %}
+          <span class="role-pill role-analyst"><i class="fas fa-magnifying-glass"></i> Analyst</span>
+        {% else %}
+          <span class="role-pill role-student"><i class="fas fa-graduation-cap"></i> Student</span>
+        {% endif %}
       </div>
     </div>
   </aside>
@@ -105,6 +156,10 @@
           <span>Systems Online</span>
         </div>
         <div class="time-display" id="liveTime"></div>
+        <!-- AI Assistant button -->
+        <button class="icon-btn" title="AI Forensics Assistant" onclick="toggleAIChat()">
+          <i class="fas fa-robot"></i>
+        </button>
         <button class="icon-btn" title="Notifications" onclick="toggleAlertPanel()">
           <i class="fas fa-bell"></i>
           <span class="notif-count" id="notifCount" style="display:none">0</span>
@@ -132,7 +187,67 @@
   <!-- Sidebar overlay for mobile -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+  <!-- ── AI Chat Panel ───────────────────────────────────────────────────── -->
+  <div id="aiChatPanel" class="ai-chat-panel">
+    <div class="ai-chat-header">
+      <span><i class="fas fa-robot"></i> DAFT Assistant</span>
+      <button onclick="toggleAIChat()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div id="chatMessages" class="ai-chat-messages">
+      <div class="chat-bubble bot-bubble">
+        Ask me about <strong>ELA, SHA-256, Isolation Forest, chain of custody, deepfakes, SQL injection</strong> and more.
+      </div>
+    </div>
+    <div class="ai-chat-input-row">
+      <input type="text" id="chatInput" placeholder="Ask a forensics question…"
+             onkeydown="if(event.key==='Enter') sendChat()"/>
+      <button onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block scripts %}{% endblock %}
+
+  <script>
+  /* ── AI Chat ──────────────────────────────────────────────────────────── */
+  function toggleAIChat() {
+    const p = document.getElementById('aiChatPanel');
+    p.classList.toggle('open');
+    if (p.classList.contains('open')) document.getElementById('chatInput').focus();
+  }
+
+  async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = '';
+    const msgs = document.getElementById('chatMessages');
+    msgs.innerHTML += `<div class="chat-bubble user-bubble">${q}</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    msgs.innerHTML += `<div class="chat-bubble bot-bubble typing-indicator"><span></span><span></span><span></span></div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    try {
+      const res  = await fetch('/api/ask', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: q})
+      });
+      const data = await res.json();
+      // Remove typing indicator
+      const typing = msgs.querySelector('.typing-indicator');
+      if (typing) typing.remove();
+      msgs.innerHTML += `
+        <div class="chat-bubble bot-bubble">
+          <span class="chat-topic">${data.topic.toUpperCase()}</span><br/>
+          ${data.answer}
+        </div>`;
+    } catch(e) {
+      const typing = msgs.querySelector('.typing-indicator');
+      if (typing) typing.remove();
+      msgs.innerHTML += `<div class="chat-bubble bot-bubble" style="color:#ef4444">Request failed.</div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  </script>
 </body>
 </html>
