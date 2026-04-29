@@ -963,7 +963,11 @@ def create_case():
 @app.route("/logs")
 @login_required
 def logs():
-    return render_template("logs.html", logs=activity_logs)
+    return render_template(
+    "logs.html",
+    logs=activity_logs,
+    user=session.get("user")
+)
 
 
 @app.route("/api/cases", methods=["GET"])
