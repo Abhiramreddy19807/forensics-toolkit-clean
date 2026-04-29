@@ -623,11 +623,16 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html", analytics=analytics,
-                           user=session["user"],
-                           role=session.get("role"),
-                           role_label=session.get("role_label", ""))
-
+    if "user" not in session:
+        return redirect("/")
+    role = session.get('role', 'student')  # safe fallback
+    return render_template(
+    "dashboard.html",
+    analytics=analytics,
+    user=session.get("user"),
+    role=role,
+    role_label=session.get("role_label", "Student")
+)
 
 # ===========================================================================
 # ROUTES — Evidence Analyzer

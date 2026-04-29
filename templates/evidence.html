@@ -18,6 +18,25 @@
     <span class="panel-badge">Isolation Forest · Unsupervised ML</span>
   </div>
   <div class="panel-body">
+
+    <!-- Case selector -->
+    {% if cases %}
+    <div class="form-group" style="margin-bottom:1rem">
+      <label style="font-size:0.72rem;letter-spacing:0.1em;color:var(--text-secondary);font-weight:600">
+        <i class="fas fa-folder-open" style="color:var(--accent-teal)"></i> ATTACH TO CASE (optional)
+      </label>
+      <select id="caseSelect" name="case_id"
+              style="width:100%;padding:0.6rem 0.75rem;background:var(--bg-input);
+                     border:1px solid var(--border);border-radius:8px;
+                     color:var(--text-primary);font-size:0.875rem">
+        <option value="">— No case —</option>
+        {% for c in cases %}
+        <option value="{{ c.case_id }}">{{ c.case_id }} — {{ c.title }} ({{ c.status }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
     <div class="upload-zone" id="uploadZone">
       <div class="upload-icon"><i class="fas fa-cloud-arrow-up"></i></div>
       <p>Drag & drop a CSV file here, or click to browse</p>
@@ -51,6 +70,24 @@
 
 <!-- Results Section -->
 <div id="resultsSection" style="display:none">
+
+  <!-- Hash info banner -->
+  <div id="hashBanner" style="display:none;background:rgba(0,212,255,0.06);
+       border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:0.9rem 1.25rem;
+       margin-bottom:1.25rem;font-size:0.8rem">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+      <i class="fas fa-fingerprint" style="color:var(--accent-teal)"></i>
+      <strong style="color:var(--accent-teal)">Evidence Registered</strong>
+      <span id="evidenceIdBadge" style="background:rgba(0,212,255,0.15);padding:2px 8px;
+             border-radius:999px;font-family:var(--font-mono);color:var(--accent-teal)"></span>
+    </div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-family:var(--font-mono);
+                color:var(--text-secondary)">
+      <span><strong style="color:var(--text-primary)">MD5:</strong> <span id="hashMD5"></span></span>
+      <span><strong style="color:var(--text-primary)">SHA-256:</strong> <span id="hashSHA256"></span></span>
+    </div>
+  </div>
+
   <!-- Summary Cards -->
   <div class="result-summary" id="resultSummary">
     <div class="summary-item">
@@ -85,7 +122,8 @@
     <div class="table-header">
       <h3><i class="fas fa-table"></i> Analysis Results</h3>
       <div class="table-controls">
-        <input class="search-input" type="text" id="tableSearch" placeholder="Filter records…" oninput="filterTable()"/>
+        <input class="search-input" type="text" id="tableSearch"
+               placeholder="Filter records…" oninput="filterTable()"/>
         <select class="filter-select" id="statusFilter" onchange="filterTable()">
           <option value="">All Status</option>
           <option value="ANOMALY">Anomaly Only</option>

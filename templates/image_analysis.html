@@ -18,26 +18,49 @@
     <span class="panel-badge">ELA · OpenCV · Edge Detection</span>
   </div>
   <div class="panel-body">
+
+    <!-- Case selector -->
+    {% if cases %}
+    <div class="form-group" style="margin-bottom:1rem">
+      <label style="font-size:0.72rem;letter-spacing:0.1em;color:var(--text-secondary);font-weight:600">
+        <i class="fas fa-folder-open" style="color:var(--accent-teal)"></i> ATTACH TO CASE (optional)
+      </label>
+      <select id="imgCaseSelect"
+              style="width:100%;padding:0.6rem 0.75rem;background:var(--bg-input);
+                     border:1px solid var(--border);border-radius:8px;
+                     color:var(--text-primary);font-size:0.875rem">
+        <option value="">— No case —</option>
+        {% for c in cases %}
+        <option value="{{ c.case_id }}">{{ c.case_id }} — {{ c.title }} ({{ c.status }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
     <div class="img-upload-zone" id="imgUploadZone">
       <div id="imgDropArea">
         <i class="fas fa-image upload-icon" style="font-size:3rem;color:var(--accent-teal)"></i>
         <p>Drag & drop image here, or click to select</p>
         <small>Supported: JPG, PNG, BMP, TIFF · Max 16 MB</small>
-        <input type="file" id="imageFile" accept="image/*" style="display:none" onchange="previewImage(event)"/>
-        <button class="btn btn-outline" onclick="document.getElementById('imageFile').click()">
+        <input type="file" id="imageFile" accept="image/*" style="display:none"
+               onchange="previewImage(event)"/>
+        <button class="btn btn-outline"
+                onclick="document.getElementById('imageFile').click()">
           <i class="fas fa-folder-open"></i> Browse
         </button>
       </div>
-      <!-- Preview -->
       <div id="imgPreviewArea" style="display:none">
         <img id="imgPreview" class="img-preview-thumb" alt="Preview"/>
         <div class="img-meta" id="imgMeta"></div>
-        <button class="btn-clear" onclick="clearImage()"><i class="fas fa-xmark"></i> Remove</button>
+        <button class="btn-clear" onclick="clearImage()">
+          <i class="fas fa-xmark"></i> Remove
+        </button>
       </div>
     </div>
 
     <div class="action-row">
-      <button class="btn btn-primary" id="analyzeImgBtn" onclick="analyzeImage()" disabled>
+      <button class="btn btn-primary" id="analyzeImgBtn"
+              onclick="analyzeImage()" disabled>
         <i class="fas fa-microscope"></i> Analyze Image
       </button>
     </div>
@@ -52,6 +75,24 @@
 
 <!-- Results -->
 <div id="imgResultsSection" style="display:none">
+
+  <!-- Evidence hash banner -->
+  <div id="imgHashBanner" style="display:none;background:rgba(0,212,255,0.06);
+       border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:0.9rem 1.25rem;
+       margin-bottom:1.25rem;font-size:0.8rem">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+      <i class="fas fa-fingerprint" style="color:var(--accent-teal)"></i>
+      <strong style="color:var(--accent-teal)">Evidence Registered</strong>
+      <span id="imgEvidenceId" style="background:rgba(0,212,255,0.15);padding:2px 8px;
+             border-radius:999px;font-family:var(--font-mono);color:var(--accent-teal)"></span>
+    </div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-family:var(--font-mono);
+                color:var(--text-secondary)">
+      <span><strong style="color:var(--text-primary)">MD5:</strong> <span id="imgHashMD5"></span></span>
+      <span><strong style="color:var(--text-primary)">SHA-256:</strong> <span id="imgHashSHA256"></span></span>
+    </div>
+  </div>
+
   <!-- Verdict Banner -->
   <div class="verdict-banner" id="imgVerdictBanner">
     <div class="verdict-icon-lg" id="verdictIcon"></div>
@@ -63,16 +104,16 @@
       <svg viewBox="0 0 200 120" class="gauge-svg">
         <defs>
           <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="#10b981"/>
-            <stop offset="50%" stop-color="#f59e0b"/>
+            <stop offset="0%"   stop-color="#10b981"/>
+            <stop offset="50%"  stop-color="#f59e0b"/>
             <stop offset="100%" stop-color="#ef4444"/>
           </linearGradient>
         </defs>
-        <!-- Track -->
-        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
-        <!-- Fill -->
-        <path id="gaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 251.2"/>
-        <!-- Needle placeholder replaced by score text -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
+              stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+        <path id="gaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
+              stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round"
+              stroke-dasharray="0 251.2"/>
       </svg>
       <div class="gauge-score" id="gaugeScore">0%</div>
       <div class="gauge-label">Tampering Score</div>
@@ -115,6 +156,18 @@
     </div>
   </div>
 
+  <!-- EXIF Metadata Panel -->
+  <div class="tool-panel" id="metaPanel" style="display:none;margin-bottom:1.5rem">
+    <div class="panel-header">
+      <h3><i class="fas fa-tags"></i> Image Metadata (EXIF)</h3>
+      <span class="panel-badge">Chain of Custody</span>
+    </div>
+    <div class="panel-body">
+      <div id="metaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+           gap:0.6rem;font-size:0.82rem"></div>
+    </div>
+  </div>
+
   <!-- Side-by-side images -->
   <div class="img-comparison">
     <div class="img-panel">
@@ -122,7 +175,9 @@
       <img id="originalImg" alt="Original" class="analysis-img"/>
     </div>
     <div class="img-panel">
-      <div class="img-panel-header"><i class="fas fa-wave-square"></i> ELA Visualization</div>
+      <div class="img-panel-header">
+        <i class="fas fa-wave-square"></i> ELA Visualization
+      </div>
       <img id="elaImg" alt="ELA" class="analysis-img"/>
       <p class="img-caption">Bright areas indicate potential forgery regions</p>
     </div>

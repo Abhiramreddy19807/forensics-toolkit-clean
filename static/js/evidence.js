@@ -31,17 +31,23 @@ function clearFile() {
 }
 
 async function runAnalysis() {
-  const btn = document.getElementById('analyzeBtn');
+  const btn     = document.getElementById('analyzeBtn');
   const loading = document.getElementById('evidenceLoading');
   const results = document.getElementById('resultsSection');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing…';
   loading.style.display = 'flex';
-  results.style.display = 'none';
+  results.style.display  = 'none';
 
   const formData = new FormData();
   if (fileInput?.files[0]) formData.append('file', fileInput.files[0]);
+
+  // Attach case_id if selected
+  const caseSelect = document.getElementById('caseSelect');
+  if (caseSelect && caseSelect.value) {
+    formData.append('case_id', caseSelect.value);
+  }
 
   try {
     const res  = await fetch('/api/analyze-evidence', { method: 'POST', body: formData });
@@ -53,6 +59,7 @@ async function runAnalysis() {
     renderSummary(data);
     renderTable(data.records, data.columns);
     renderAnomalyChart(data.records);
+    renderHashBanner(data);
     results.style.display = 'block';
     results.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
@@ -61,6 +68,20 @@ async function runAnalysis() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-play"></i> Run Analysis';
     loading.style.display = 'none';
+  }
+}
+
+function renderHashBanner(data) {
+  const banner = document.getElementById('hashBanner');
+  if (!banner) return;
+
+  if (data.evidence_id && data.hashes) {
+    document.getElementById('evidenceIdBadge').textContent = data.evidence_id;
+    document.getElementById('hashMD5').textContent    = data.hashes.md5;
+    document.getElementById('hashSHA256').textContent = data.hashes.sha256;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
   }
 }
 
@@ -104,9 +125,9 @@ function renderAnomalyChart(records) {
 
   if (anomalyChartInstance) anomalyChartInstance.destroy();
 
-  const labels  = records.map(r => `#${r.record_id}`);
-  const scores  = records.map(r => r.anomaly_score);
-  const colors  = records.map(r => r.status === 'ANOMALY' ? '#ef4444' : '#10b981');
+  const labels   = records.map(r => `#${r.record_id}`);
+  const scores   = records.map(r => r.anomaly_score);
+  const colors   = records.map(r => r.status === 'ANOMALY' ? '#ef4444' : '#10b981');
   const bgColors = records.map(r => r.status === 'ANOMALY' ? 'rgba(239,68,68,0.6)' : 'rgba(16,185,129,0.6)');
 
   anomalyChartInstance = new Chart(ctx, {
@@ -175,6 +196,8 @@ function filterTable() {
 
 function clearResults() {
   document.getElementById('resultsSection').style.display = 'none';
+  const banner = document.getElementById('hashBanner');
+  if (banner) banner.style.display = 'none';
   clearFile();
   allRecords = [];
 }

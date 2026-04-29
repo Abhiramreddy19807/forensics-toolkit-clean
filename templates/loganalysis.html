@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Log Analysis{% endblock %}
+{% block breadcrumb %}Log Analysis{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-file-lines"></i> Log Analysis</h1>
+    <p class="page-subtitle">Upload system/auth logs — rule-based engine flags brute force, SQLi, path traversal and more</p>
+  </div>
+</div>
+
+<div class="two-col-layout">
+  <!-- Input Panel -->
+  <div class="input-panel">
+    <div class="tool-panel">
+      <div class="panel-header">
+        <h3><i class="fas fa-upload"></i> Log Input</h3>
+        <span class="panel-badge">Rule-Based · Pattern Matching</span>
+      </div>
+      <div class="panel-body">
+        <div class="upload-zone" id="logZone">
+          <div class="upload-icon"><i class="fas fa-file-lines"></i></div>
+          <p>Drop a .log or .txt file here, or click to browse</p>
+          <input type="file" id="logFile" accept=".log,.txt,.csv" style="display:none"
+                 onchange="loadFile(event)"/>
+          <button class="btn btn-outline"
+                  onclick="document.getElementById('logFile').click()">
+            <i class="fas fa-folder-open"></i> Browse
+          </button>
+        </div>
+
+        <div style="text-align:center;color:var(--text-muted);
+                    margin:0.6rem 0;font-size:0.82rem">— or paste log text —</div>
+
+        <textarea id="logText" rows="10"
+          placeholder="Paste log content here…&#10;Example:&#10;  Failed password for root from 192.168.1.5 port 22&#10;  Authentication failure; logname= uid=0&#10;  select * from users where id=1 UNION SELECT password"
+          style="width:100%;background:var(--bg-input);border:1px solid var(--border);
+                 color:var(--text-primary);padding:0.75rem;border-radius:8px;
+                 font-family:var(--font-mono);font-size:0.78rem;resize:vertical"></textarea>
+
+        <div class="action-row" style="margin-top:1rem">
+          <button class="btn btn-primary" id="analyzeLogBtn" onclick="analyzeLog()">
+            <i class="fas fa-magnifying-glass"></i> Analyze Log
+          </button>
+          <button class="btn btn-outline" onclick="clearLog()">
+            <i class="fas fa-rotate-left"></i> Clear
+          </button>
+        </div>
+
+        <!-- Pattern reference -->
+        <div style="margin-top:1.25rem;background:rgba(0,212,255,0.04);
+                    border:1px solid rgba(0,212,255,0.1);border-radius:8px;padding:0.9rem">
+          <p style="font-size:0.75rem;color:var(--accent-teal);font-weight:600;
+                    margin-bottom:0.5rem"><i class="fas fa-shield-halved"></i> Detection Rules</p>
+          <div style="display:flex;flex-wrap:wrap;gap:0.35rem">
+            {% for rule in [
+              ('CRITICAL','Root Login'),('CRITICAL','SQL Injection'),
+              ('HIGH','Brute Force'),('HIGH','Auth Failure'),
+              ('HIGH','Path Traversal'),('HIGH','XSS Attempt'),
+              ('HIGH','Null Byte'),('HIGH','Invalid User'),
+              ('MEDIUM','Port Scan'),('LOW','Connection Refused')
+            ] %}
+            <span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);
+                         border-radius:4px;padding:2px 7px;font-size:0.68rem;
+                         color:var(--text-secondary)">
+              {{ rule[1] }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="results-panel">
+    <div class="verdict-card" id="logSummary">
+      <div class="verdict-placeholder">
+        <i class="fas fa-file-magnifying-glass"></i>
+        <p>Submit a log file to see threat findings</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-banner" id="logLoading" style="display:none">
+  <div class="spinner"></div>
+  <span>Scanning log for anomalous patterns…</span>
+</div>
+
+<!-- Findings Table -->
+<div class="table-card" id="findingsSection" style="display:none;margin-top:1.5rem">
+  <div class="table-header">
+    <h3><i class="fas fa-triangle-exclamation"></i> Findings</h3>
+    <div class="table-controls">
+      <select class="filter-select" id="sevFilter" onchange="filterFindings()">
+        <option value="">All Severities</option>
+        <option value="CRITICAL">Critical</option>
+        <option value="HIGH">High</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="LOW">Low</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Line #</th><th>Severity</th><th>Finding</th><th>Log Excerpt</th>
+        </tr>
+      </thead>
+      <tbody id="findingsBody"></tbody>
+    </table>
+  </div>
+  <div class="table-footer" id="findingsFooter"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allFindings = [];
+
+const SEV_COLOR = {CRITICAL:'#ef4444', HIGH:'#f59e0b', MEDIUM:'#3b82f6', LOW:'#10b981'};
+const SEV_BADGE = {CRITICAL:'danger', HIGH:'warning', MEDIUM:'info', LOW:'success'};
+
+/* Drop zone */
+const logZone = document.getElementById('logZone');
+logZone?.addEventListener('dragover', e => { e.preventDefault(); logZone.classList.add('dragover'); });
+logZone?.addEventListener('dragleave', () => logZone.classList.remove('dragover'));
+logZone?.addEventListener('drop', e => {
+  e.preventDefault(); logZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFileObj(file);
+});
+logZone?.addEventListener('click', () => document.getElementById('logFile').click());
+
+function loadFile(event) {
+  const file = event.target.files[0];
+  if (file) loadFileObj(file);
+}
+function loadFileObj(file) {
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('logText').value = e.target.result; };
+  reader.readAsText(file);
+}
+
+async function analyzeLog() {
+  const text = document.getElementById('logText').value.trim();
+  if (!text) { alert('Paste or upload a log first.'); return; }
+
+  const btn     = document.getElementById('analyzeLogBtn');
+  const loading = document.getElementById('logLoading');
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning…';
+  loading.style.display = 'flex';
+
+  try {
+    const res  = await fetch('/api/analyze-log', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text})
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    renderLogSummary(data);
+    renderFindings(data.findings);
+  } catch(e) {
+    alert('Request failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magnifying-glass"></i> Analyze Log';
+    loading.style.display = 'none';
+  }
+}
+
+function renderLogSummary(data) {
+  const riskColor = SEV_COLOR[data.overall_risk] || '#94a3b8';
+  const icon = {CRITICAL:'🔴', HIGH:'🟠', MEDIUM:'🟡', LOW:'🟢'}[data.overall_risk] || '⚪';
+  document.getElementById('logSummary').innerHTML = `
+    <div class="verdict-result">
+      <div class="verdict-icon">${icon}</div>
+      <div class="verdict-label" style="color:${riskColor}">${data.overall_risk} RISK</div>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.75rem">
+        ${data.total_lines.toLocaleString()} lines scanned
+        · <strong style="color:${riskColor}">${data.findings.length}</strong> finding(s)
+        · ${data.analyzed_at}
+      </p>
+      <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap">
+        ${Object.entries(data.counts).map(([sev, cnt]) => `
+          <span style="background:rgba(0,0,0,0.2);padding:4px 14px;border-radius:999px;
+                       font-size:0.78rem;border:1px solid ${SEV_COLOR[sev]}44;
+                       color:${SEV_COLOR[sev]}">
+            ${sev}: <strong>${cnt}</strong>
+          </span>`).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('logSummary').style.borderColor = riskColor + '44';
+}
+
+function renderFindings(findings) {
+  allFindings = findings;
+  document.getElementById('findingsSection').style.display = 'block';
+  renderFindingsTable(findings);
+}
+
+function renderFindingsTable(findings) {
+  const tbody  = document.getElementById('findingsBody');
+  const footer = document.getElementById('findingsFooter');
+  if (!findings.length) {
+    tbody.innerHTML  = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:2rem">No findings</td></tr>';
+    footer.textContent = '';
+    return;
+  }
+  tbody.innerHTML = findings.map(f => `
+    <tr>
+      <td style="color:var(--text-muted);font-family:var(--font-mono)">${f.line}</td>
+      <td><span class="status-badge ${SEV_BADGE[f.severity] || ''}">${f.severity}</span></td>
+      <td><strong>${f.label}</strong></td>
+      <td style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-secondary);
+                 max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${f.excerpt.replace(/"/g,'&quot;')}">${f.excerpt}</td>
+    </tr>
+  `).join('');
+  footer.textContent = `${findings.length} finding(s)`;
+}
+
+function filterFindings() {
+  const sev = document.getElementById('sevFilter').value;
+  renderFindingsTable(sev ? allFindings.filter(f => f.severity === sev) : allFindings);
+}
+
+function clearLog() {
+  document.getElementById('logText').value = '';
+  document.getElementById('logFile').value = '';
+  document.getElementById('logSummary').innerHTML = `
+    <div class="verdict-placeholder">
+      <i class="fas fa-file-magnifying-glass"></i>
+      <p>Submit a log file to see threat findings</p>
+    </div>`;
+  document.getElementById('findingsSection').style.display = 'none';
+}
+</script>
+{% endblock %}
