@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
   {% block head %}{% endblock %}
 </head>
 <body class="app-body">
@@ -58,20 +57,20 @@
           </a>
         </li>
         <li>
-          <a href="/cases" class="nav-link">
+          <a href="{{ url_for('view_cases') }}" class="nav-link {% if request.endpoint == 'view_cases' %}active{% endif %}">
             <i class="fas fa-folder-open"></i>
             <span>Cases</span>
           </a>
         </li>
         <li>
-          <a href="/logs" class="nav-link">
+          <a href="{{ url_for('logs') }}" class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}">
             <i class="fas fa-list-check"></i>
             <span>Logs</span>
           </a>
         </li>
         {% if role in ['police', 'analyst'] %}
         <li>
-          <a href="{{ url_for('cases') }}" class="nav-link {% if request.endpoint == 'cases' %}active{% endif %}">
+          <a href="{{ url_for('view_cases') }}" class="nav-link {% if request.endpoint == 'view_cases' %}active{% endif %}">
             <i class="fas fa-folder-open"></i>
             <span>Case Manager</span>
           </a>
@@ -114,7 +113,7 @@
 
     <div class="sidebar-footer">
       <div class="user-chip">
-        <div class="user-avatar">{{ user[0].upper() }}</div>
+        <div class="user-avatar">{{ user[0].upper() if user else 'U' }}</div>
         <div class="user-info">
           <span class="user-name">{{ user }}</span>
           <span class="user-role">{{ session.get('role_label', 'Forensic Analyst') }}</span>
