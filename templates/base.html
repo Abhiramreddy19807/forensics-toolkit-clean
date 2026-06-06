@@ -70,7 +70,7 @@
         </li>
         {% if role in ['police', 'analyst'] %}
         <li>
-          <a href="{{ url_for('view_cases') }}" class="nav-link {% if request.endpoint == 'view_cases' %}active{% endif %}">
+          <a href="{{ url_for('case_manager') }}" class="nav-link {% if request.endpoint == 'view_cases' %}active{% endif %}">
             <i class="fas fa-folder-open"></i>
             <span>Case Manager</span>
           </a>

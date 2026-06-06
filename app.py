@@ -4,7 +4,7 @@ Enhanced with: RBAC, Case Management, Evidence Hashing,
 Metadata Extraction, Log Analysis, AI Assistant, Activity Logging,
 Extended Image Analysis, Network Analysis, CSV/JSON Exports
 """
-
+import uuid
 import os
 import csv
 import json
@@ -942,32 +942,38 @@ def _generate_ela_image(pil_img: Image.Image) -> str:
 @app.route("/cases")
 @login_required
 def view_cases():
-    return render_template("cases.html", cases=cases)
+    return render_template("Cases.html",
+                           cases=list(cases_store.values()),
+                           user=session.get("user"),
+                           role=session.get("role"),
+                           role_label=session.get("role_label", ""))
 
 
 @app.route("/create_case", methods=["POST"])
 @login_required
-def create_case():
-    case_name = request.form.get("case_name")
-    case_id = len(cases) + 1
-    cases.append({"id": case_id, "name": case_name, "status": "Open", "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-    analytics["cases"].append(case_name)
+def create_case_route():
+    case_name = request.form.get("case_name", "").strip()
+    if not case_name:
+        return redirect(url_for("view_cases"))
+    case = create_case(case_name, "", session.get("user", "unknown"))
     activity_logs.append({
-        "user": session["user"],
+        "user": session.get("user", "unknown"),
         "action": f"Created case '{case_name}'",
         "time": datetime.now().strftime("%H:%M:%S")
     })
-    return redirect("/cases")
+    return redirect(url_for("view_cases"))
 
 
 @app.route("/logs")
 @login_required
 def logs():
     return render_template(
-    "logs.html",
-    logs=activity_logs,
-    user=session.get("user")
-)
+        "logs.html",
+        logs=activity_logs,
+        user=session.get("user"),
+        role=session.get("role"),
+        role_label=session.get("role_label")
+    )
 
 
 @app.route("/api/cases", methods=["GET"])
@@ -1083,6 +1089,30 @@ def api_extract_metadata():
     log_activity("metadata_extracted", f"File: {file.filename}", file_name=file.filename)
     return jsonify(meta)
 
+@app.route("/case-manager")
+@login_required
+def case_manager():
+    return render_template(
+        "case_manager.html",
+        cases=list(cases_store.values()),
+        user=session.get("user"),
+        role=session.get("role"),
+        role_label=session.get("role_label", "")
+    )
+
+@app.route("/update_status/<case_id>", methods=["POST"])
+@login_required
+def update_status(case_id):
+    if case_id in cases_store:
+        cases_store[case_id]["status"] = request.form.get("status", "Open")
+    return redirect(url_for("case_manager"))
+
+@app.route("/delete_case/<case_id>")
+@login_required
+def delete_case(case_id):
+    if case_id in cases_store:
+        del cases_store[case_id]
+    return redirect(url_for("case_manager"))
 
 # ===========================================================================
 # ROUTES — Log Analysis
@@ -1091,7 +1121,7 @@ def api_extract_metadata():
 @login_required
 @permission_required("log_analysis")
 def log_analysis():
-    return render_template("log_analysis.html", user=session["user"],
+    return render_template("log_analysis.html", user=session.get("user"),
                            role=session.get("role"),
                            role_label=session.get("role_label", ""))
 
@@ -1472,4 +1502,4 @@ def download_report():
 if __name__ == "__main__":
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=True)

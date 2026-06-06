@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Case Manager</h2>
+
+<div class="card">
+    <h3>Manage Cases</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Created By</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for case in cases %}
+            <tr>
+                <td>{{ case.case_id }}</td>
+                <td>{{ case.title }}</td>
+                <td>{{ case.created_by }}</td>
+
+                <td>
+                    <form action="/update_status/{{ case.case_id }}" method="POST">
+                        <select name="status">
+                            <option value="Open" {% if case.status=="Open" %}selected{% endif %}>Open</option>
+                            <option value="Closed" {% if case.status=="Closed" %}selected{% endif %}>Closed</option>
+                        </select>
+                        <button type="submit">Update</button>
+                    </form>
+                </td>
+
+                <td>
+                    <a href="/delete_case/{{ case.case_id }}" style="color:red;">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
